@@ -34,6 +34,8 @@
         const width = 600;
         const height = 400;
         const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+        const pers10 = (payer.maxValue - payer.minValue) * 0.1;
+        const pers05 = (payer.maxValue - payer.minValue) * 0.02;
 
         // Gaussian function parameters (for visual purposes)
         const mu = payer.value;
@@ -48,13 +50,13 @@
 
         // Generate data points for Gaussian distribution
         const data = [];
-        for (let x = payer.minValue; x <= payer.maxValue; x += 100000) {
+        for (let x = payer.minValue; x <= payer.maxValue; x += pers05) {
             data.push({ x: x, y: gaussian(x, mu, sigma) });
         }
 
         // Set up x and y scales
         const xScale = d3.scaleLinear()
-            .domain([payer.minValue, payer.maxValue])
+            .domain([payer.minValue, payer.maxValue + pers10])
             .range([margin.left, width - margin.right]);
 
         const yScale = d3.scaleLinear()
@@ -67,9 +69,9 @@
         // Define segments using the input bounds, keeping separate bounds but using the same color for lc, hc, and lwc bounds
         const segments = [
             { lower: payer.minValue, upper: payer.hcUpperBound, color: '#f99' }, // low confidence lower bound
-            { lower: payer.hcUpperBound, upper: payer.hcLowerBound, color: '#f99' }, // low confidence upper bound
-            { lower: payer.lcUpperBound, upper: payer.lcLowerBound, color: '#ccc' }, // medium confidence bounds
-            { lower: payer.lwcUpperBound, upper: payer.lwcLowerBound, color: '#99f' }, // high confidence bounds
+            { lower: payer.hcUpperBound, upper: payer.hcLowerBound, color: 'rgba(0, 158, 115, 0.2)' }, // low confidence upper bound
+            { lower: payer.lcUpperBound, upper: payer.lcLowerBound, color: 'rgba(0, 158, 115, 0.4)' }, // medium confidence bounds
+            { lower: payer.lwcUpperBound, upper: payer.lwcLowerBound, color: 'rgba(0, 158, 115, 0.6)' }, // high confidence bounds
         ];
 
         // Loop through segments and fill them
