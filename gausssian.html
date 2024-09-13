@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaussian Function with Segments</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        svg {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+    <svg width="600" height="400"></svg>
+
+    <script>
+        
+        // Set SVG dimensions
+        const width = 600;
+        const height = 400;
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+
+        // Gaussian function parameters
+        const mu = 0; // mean
+        const sigma = 2; // standard deviation
+
+        // Gaussian function definition
+        function gaussian(x, mu, sigma) {
+            const factor = 1 / (sigma * Math.sqrt(2 * Math.PI));
+            const exponent = -0.5 * Math.pow((x - mu) / sigma, 2);
+            return factor * Math.exp(exponent);
+        }
+
+        // Generate data points for Gaussian distribution
+        const data = [];
+        for (let x = -5; x <= 5; x += 0.1) {
+            data.push({ x: x, y: gaussian(x, mu, sigma) });
+        }
+
+        // Set up x and y scales
+        const xScale = d3.scaleLinear()
+            .domain([-5, 5])
+            .range([margin.left, width - margin.right]);
+
+        const yScale = d3.scaleLinear()
+            .domain([0, 0.5]) // Y max determined by Gaussian peak
+            .range([height - margin.bottom, margin.top]);
+
+        // Append the SVG canvas
+        const svg = d3.select("svg");
+
+        // Split the data into segments based on standard deviation levels
+        const segmentLevels = [-2, -1, 0, 1, 2];
+        const colors = ['#fdd', '#f99', '#ccc', '#99f', '#ddf']; // Color for each segment
+
+        segmentLevels.forEach((level, index) => {
+            const nextLevel = segmentLevels[index + 1] || 5; // Handle upper bound case
+            
+            // Filter data within the segment
+            const segmentData = data.filter(d => d.x >= level && d.x <= nextLevel);
+
+            // Line generator for filled area
+            const area = d3.area()
+                .x(d => xScale(d.x))
+                .y0(yScale(0))  // Y baseline (fill to the x-axis)
+                .y1(d => yScale(d.y));
+
+            // Append the path for the Gaussian segment area
+            svg.append("path")
+                .datum(segmentData)
+                .attr("fill", colors[index])  // Use a different color for each segment
+                .attr("stroke", "none")
+                .attr("d", area);
+        });
+
+        // Create line generator for the curve
+        const line = d3.line()
+            .x(d => xScale(d.x))
+            .y(d => yScale(d.y));
+
+        // Append the line for the Gaussian curve
+        svg.append("path")
+            .datum(data)
+            .attr("fill", "none")
+            .attr("stroke", "steelblue")
+            .attr("stroke-width", 2)
+            .attr("d", line);
+
+        // Create X axis
+        svg.append("g")
+            .attr("transform", `translate(0, ${height - margin.bottom})`)
+            .call(d3.axisBottom(xScale));
+
+        // Create Y axis
+        svg.append("g")
+            .attr("transform", `translate(${margin.left}, 0)`)
+            .call(d3.axisLeft(yScale));
+
+    </script>
+
+</body>
+</html>
