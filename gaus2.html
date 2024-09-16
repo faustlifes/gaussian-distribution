@@ -21,7 +21,7 @@
             "name": "Payer 1",
             "value": 12200000,
             "hcUpperBound": 8000000,
-            "hcLowerBound": 15000000,
+            "hcLowerBound": 16000000,
             "lcUpperBound": 10000000,
             "lcLowerBound": 13500000,
             "lwcUpperBound": 12000000,
@@ -50,7 +50,7 @@
 
         // Generate data points for Gaussian distribution
         const data = [];
-        for (let x = payer.minValue; x <= payer.maxValue; x += pers05) {
+        for (let x = payer.minValue; x <= payer.maxValue + pers10; x += pers05) {
             data.push({ x: x, y: gaussian(x, mu, sigma) });
         }
 
