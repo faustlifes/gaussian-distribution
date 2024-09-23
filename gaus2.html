@@ -129,28 +129,27 @@
                 .attr("transform", `translate(0, ${heightPerChart - margin.bottom})`)
                 .call(d3.axisBottom(xScale).tickFormat(d => d3.format(",")(d))); // Format large numbers with commas
 
-            // Create Y axis
-            g.append("g")
-                .attr("transform", `translate(${margin.left}, 0)`)
-                .call(d3.axisLeft(yScale));
+        // Create Y axis
+        svg.append("g")
+            .attr("transform", `translate(${margin.left}, 0)`)
+            .call(d3.axisLeft(yScale));
 
-            // Add an orange vertical line for the current payer value
-            g.append("line")
-                .attr("x1", xScale(payer.value))
-                .attr("x2", xScale(payer.value))
-                .attr("y1", yScale(0))
-                .attr("y2", yScale(d3.max(data, d => d.y))) // Extend to the top of the curve
-                .attr("stroke", "orange")
-                .attr("stroke-width", 2)
-                .attr("stroke-dasharray", "4,4"); // Make the line dashed
+        // Add an orange vertical line for the current payer value
+        svg.append("line")
+            .attr("x1", xScale(payer.value))
+            .attr("x2", xScale(payer.value))
+            .attr("y1", yScale(0))
+            .attr("y2", yScale(d3.max(data, d => d.y))) // Extend to the top of the curve
+            .attr("stroke", "orange")
+            .attr("stroke-width", 2)
+            .attr("stroke-dasharray", "4,4"); // Make the line dashed
 
-            // Add a label for the current payer value
-            g.append("text")
-                .attr("x", xScale(payer.value) + 5)  // Position label slightly to the right of the line
-                .attr("y", yScale(d3.max(data, d => d.y)) - 10)  // Position slightly above the line
-                .attr("fill", "orange")
-                .text(`${payer.name}: ${d3.format(",")(payer.value)}`);
-        });
+        // Add a label for the current payer value
+        svg.append("text")
+            .attr("x", xScale(payer.value) + 5)  // Position label slightly to the right of the line
+            .attr("y", yScale(d3.max(data, d => d.y)) - 10)  // Position slightly above the line
+            .attr("fill", "orange")
+            .text(`Current: ${d3.format(",")(payer.value)}`);
 
     </script>
 
