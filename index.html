@@ -1,161 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <title>D3.js Area Chart</title>
-    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaussian Function with Separate Segments and Same Colors for Bounds</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="index.js"></script>
+    <style>
+        svg {
+            background-color: #f9f9f9;
+        }
+    </style>
 </head>
-
 <body>
-    <script>
-        const payer = {
-            "name": "Payer 1",
-            "value": 12200000,
-            "hcUpperBound": 8000000,
-            "hcLowerBound": 15000000,
-            "lcUpperBound": 10000000,
-            "lcLowerBound": 13500000,
-            "lwcUpperBound": 12000000,
-            "lwcLowerBound": 12500000,
-            "minValue": 8000000,
-            "maxValue": 15000000
-        }
 
-        const values = [
-            payer.hcUpperBound,
-            payer.hcLowerBound,
-            payer.lcUpperBound,
-            payer.lcLowerBound,
-            payer.lwcUpperBound,
-            payer.lwcLowerBound
-        ].filter((v) => !isNaN(v) && v > 0);
-
-        if (values.length > 0) {
-            // Calculate bandwidth using Silverman's rule of thumb
-            const n = values.length;
-            const mean = d3.mean(values);
-            const stdDev = d3.deviation(values);
-            const q1 = d3.quantile(values, 0.25);
-            const q3 = d3.quantile(values, 0.75);
-            const IQR = q3 - q1;
-
-            const bandwidth = 0.9 * Math.min(stdDev, IQR / 1.34) * Math.pow(n, -1 / 5);
-
-            const xValues = d3.range(
-                payer.minValue,
-                payer.maxValue,
-                (payer.maxValue - payer.minValue) / 60
-            );
-            const kde = kernelDensityEstimator(
-                kernelEpanechnikov(bandwidth),
-                xValues
-            );
-
-
-            const density = kde(values);
-            console.log(density);
-            const maxDensity = d3.max(density, (d) => d[1]);
-            const heightScale = d3
-                .scaleLinear()
-                .domain([0, maxDensity])
-                .range([0, 100]);  // Adjust this value based on your visualization height
-
-            const segments = [
-                { threshold: payer.hcUpperBound, color: "rgba(0, 158, 115, 0.2)" },
-                { threshold: payer.lcUpperBound, color: "rgba(0, 158, 115, 0.4)" },
-                { threshold: payer.lwcUpperBound, color: "rgba(0, 158, 115, 0.6)" },
-                { threshold: payer.lwcLowerBound, color: "rgba(0, 158, 115, 0.6)" },
-                { threshold: payer.lcLowerBound, color: "rgba(0, 158, 115, 0.4)" },
-                { threshold: payer.hcLowerBound, color: "rgba(0, 158, 115, 0.2)" }
-            ];
-
-            const svg = d3.select("body")
-                .append("svg")
-                .attr("width", 800)
-                .attr("height", 400);
-
-            const g = svg.append("g")
-                .attr("transform", `translate(50, 50)`);
-
-            const x = d3.scaleLinear()
-                .domain([payer.minValue, payer.maxValue])
-                .range([0, 700]);
-
-            const y = d3.scaleBand()
-                .domain([payer.name])
-                .range([0, 100])
-                .padding(0.1);
-
-            const areaGenerator = d3.area()
-                .curve(d3.curveBasis)
-                .x((d) => x(d.x))
-                .y0(y(payer.name) + y.bandwidth() / 2)
-                .y1((d) => y(payer.name) + y.bandwidth() / 2 - heightScale(d.y));
-
-            const fullPathData = [
-                { x: payer.hcUpperBound, y: 0 },
-                ...density.map((d) => ({ x: d[0], y: d[1] })),
-                { x: payer.hcLowerBound, y: 0 }
-            ];
-
-            g.append("path")
-                .datum(fullPathData)
-                .attr("class", "fullpath")
-                .attr("fill", "url(#gradient)")
-                .attr("stroke", "none")
-                .attr("d", areaGenerator);
-
-            const defs = g.append("defs");
-
-            const gradient = defs.append("linearGradient")
-                .attr("id", "gradient")
-                .attr("x1", "0%")
-                .attr("y1", "0%")
-                .attr("x2", "100%")
-                .attr("y2", "0%");
-
-            let previousEnd = payer.hcUpperBound;
-            segments.forEach((segment, index) => {
-                const offsetStart = ((previousEnd - payer.hcUpperBound) / (payer.hcLowerBound - payer.hcUpperBound)) * 100;
-                const offsetEnd = ((segment.threshold - payer.hcUpperBound) / (payer.hcLowerBound - payer.hcUpperBound)) * 100;
-
-                gradient.append("stop")
-                    .attr("offset", `${offsetStart}%`)
-                    .attr("stop-color", segment.color);
-
-                gradient.append("stop")
-                    .attr("offset", `${offsetEnd}%`)
-                    .attr("stop-color", segment.color);
-
-                previousEnd = segment.threshold;
-            });
-            const yPos = y(payer.name) + y.bandwidth() / 2;
-            const actualValueHeight = ((payer.value / payer.maxValue) * 100) / 2;
-
-            g.append("line")
-                .attr("x1", x(payer.value))
-                .attr("y1", yPos)
-                .attr("x2", x(payer.value))
-                .attr("y2", yPos - actualValueHeight)
-                .attr("stroke", "#E69F00")
-                .attr("stroke-width", 2);
-        }
-
-        function kernelDensityEstimator(kernel, X) {
-            return function (V) {
-                return X.map(function (x) {
-                    return [x, d3.mean(V, function (v) { return kernel(x - v); })];
-                });
-            };
-        }
-
-        function kernelEpanechnikov(k) {
-            return function (v) {
-                return Math.abs(v /= k) <= 1 ? 0.75 * (1 - v * v) / k : 0;
-            };
-        }
-    </script>
+    <svg width="600" height="400"></svg>
 </body>
-
 </html>
