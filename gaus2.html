@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaussian Function for Multiple Payers</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        svg {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+    <svg width="600" height="800"></svg> <!-- Increased height to accommodate multiple charts -->
+
+    <script>
+        // Custom input data for multiple payers
+        const payers = [
+            {
+                "name": "Payer 1",
+                "value": 12200000,
+                "hcUpperBound": 8000000,
+                "hcLowerBound": 16000000,
+                "lcUpperBound": 10000000,
+                "lcLowerBound": 13500000,
+                "lwcUpperBound": 12000000,
+                "lwcLowerBound": 12500000,
+                "minValue": 8000000,
+                "maxValue": 16000000
+            },
+            {
+                "name": "Payer 2",
+                "value": 15000000,
+                "hcUpperBound": 11000000,
+                "hcLowerBound": 19000000,
+                "lcUpperBound": 13000000,
+                "lcLowerBound": 16500000,
+                "lwcUpperBound": 14000000,
+                "lwcLowerBound": 15000000,
+                "minValue": 11000000,
+                "maxValue": 19000000
+            }
+        ];
+
+        // Set SVG dimensions
+        const width = 600;
+        const heightPerChart = 350; // Height for each payer's chart
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+        const totalHeight = payers.length * (heightPerChart + margin.top + margin.bottom);
+
+        // Set the overall SVG height to accommodate multiple payers
+        const svg = d3.select("svg")
+            .attr("height", totalHeight);
+
+        payers.forEach((payer, index) => {
+            // Gaussian function parameters (for visual purposes)
+            const mu = payer.value;
+            const sigma = (payer.maxValue - payer.minValue) / 6;  // Estimate sigma based on the range (6-sigma rule)
+
+            // Gaussian function definition
+            function gaussian(x, mu, sigma) {
+                const factor = 1 / (sigma * Math.sqrt(2 * Math.PI));
+                const exponent = -0.5 * Math.pow((x - mu) / sigma, 2);
+                return factor * Math.exp(exponent);
+            }
+
+            // Generate data points for Gaussian distribution
+            const data = [];
+            for (let x = payer.minValue; x <= payer.maxValue; x += 100000) {
+                data.push({ x: x, y: gaussian(x, mu, sigma) });
+            }
+
+            // Set up x and y scales (x is shared, y is separate for each payer)
+            const xScale = d3.scaleLinear()
+                .domain([payer.minValue, payer.maxValue])
+                .range([margin.left, width - margin.right]);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.y)]) // Adjust the Y max based on the generated data
+                .range([heightPerChart - margin.bottom, margin.top]);
+
+            // Create a group for each payer's chart, and translate it down for each payer
+            const g = svg.append("g")
+                .attr("transform", `translate(0, ${index * (heightPerChart + margin.top + margin.bottom)})`);
+
+            // Define segments using the input bounds, keeping separate bounds but using the same color for lc, hc, and lwc bounds
+            const segments = [
+                { lower: payer.minValue, upper: payer.hcUpperBound, color: '#f99' }, // low confidence lower bound
+                { lower: payer.hcUpperBound, upper: payer.hcLowerBound, color: '#f99' }, // low confidence upper bound
+                { lower: payer.lcUpperBound, upper: payer.lcLowerBound, color: '#ccc' }, // medium confidence bounds
+                { lower: payer.lwcUpperBound, upper: payer.lwcLowerBound, color: '#99f' }, // high confidence bounds
+            ];
+
+            // Loop through segments and fill them
+            segments.forEach((segment) => {
+                const segmentData = data.filter(d => d.x >= segment.lower && d.x <= segment.upper);
+
+                // Line generator for filled area
+                const area = d3.area()
+                    .x(d => xScale(d.x))
+                    .y0(yScale(0))  // Y baseline (fill to the x-axis)
+                    .y1(d => yScale(d.y));
+
+                // Append the path for the Gaussian segment area
+                g.append("path")
+                    .datum(segmentData)
+                    .attr("fill", segment.color)  // Use the same color for bounds in the same confidence level
+                    .attr("stroke", "none")
+                    .attr("d", area);
+            });
+
+            // Create line generator for the curve
+            const line = d3.line()
+                .x(d => xScale(d.x))
+                .y(d => yScale(d.y));
+
+            // Append the line for the Gaussian curve
+            g.append("path")
+                .datum(data)
+                .attr("fill", "none")
+                .attr("stroke", "steelblue")
+                .attr("stroke-width", 2)
+                .attr("d", line);
+
+            // Create X axis
+            g.append("g")
+                .attr("transform", `translate(0, ${heightPerChart - margin.bottom})`)
+                .call(d3.axisBottom(xScale).tickFormat(d => d3.format(",")(d))); // Format large numbers with commas
+
+            // Create Y axis
+            g.append("g")
+                .attr("transform", `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(yScale));
+
+            // Add an orange vertical line for the current payer value
+            g.append("line")
+                .attr("x1", xScale(payer.value))
+                .attr("x2", xScale(payer.value))
+                .attr("y1", yScale(0))
+                .attr("y2", yScale(d3.max(data, d => d.y))) // Extend to the top of the curve
+                .attr("stroke", "orange")
+                .attr("stroke-width", 2)
+                .attr("stroke-dasharray", "4,4"); // Make the line dashed
+
+            // Add a label for the current payer value
+            g.append("text")
+                .attr("x", xScale(payer.value) + 5)  // Position label slightly to the right of the line
+                .attr("y", yScale(d3.max(data, d => d.y)) - 10)  // Position slightly above the line
+                .attr("fill", "orange")
+                .text(`${payer.name}: ${d3.format(",")(payer.value)}`);
+        });
+
+    </script>
+
+</body>
+</html>
